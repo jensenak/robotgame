@@ -7,6 +7,7 @@ require (
 	github.com/hashicorp/go-uuid v1.0.2
 	github.com/jensenak/robotgame/qwirk v0.0.0-00010101000000-000000000000
 	github.com/jensenak/robotgame/store v0.0.0-00010101000000-000000000000
+	github.com/jinzhu/gorm v1.9.16
 )
 
 replace github.com/jensenak/robotgame/qwirk => ./qwirk
