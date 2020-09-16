@@ -3,6 +3,7 @@ package qwirk
 import (
 	"strings"
 
+	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/go-uuid"
 	"github.com/jinzhu/gorm"
 	_ "github.com/jinzhu/gorm/dialects/postgres"
@@ -49,7 +50,13 @@ func (gs *GameServer) NewGame() *Game {
 
 func (gs *GameServer) Find(code string) (*Game, error) {
 	var g Game
-	gs.db.First(&g, "code = ?", code)
+	q := gs.db.First(&g, "code = ?", code)
+	if q.RecordNotFound() {
+		return nil, nil
+	}
+	if errs := q.GetErrors(); len(errs) > 0 {
+		return nil, multierror.Append(nil, errs...)
+	}
 	return &g, nil
 }
 
