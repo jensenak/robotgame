@@ -9,6 +9,7 @@ import (
 
 const (
 	testDBName = "qwirk_test"
+	testDBUser = "testuser"
 	testDBPass = "asdl1234kfjoe3ihxoiuv"
 )
 
@@ -29,18 +30,20 @@ func TestDB(t *testing.T) *gorm.DB {
 		"AND pid <> pg_backend_pid();")
 	db.Exec(fmt.Sprintf("DROP DATABASE IF EXISTS %s;", testDBName))
 	db.Exec(fmt.Sprintf("CREATE DATABASE %s;", testDBName))
-	// db.Exec("DROP USER IF EXISTS testuser;")
-	// db.Exec(fmt.Sprintf("CREATE USER testuser PASSWORD '%s';", testDBPass))
-
-	db.AutoMigrate(&Game{}, &Player{})
-
+	db.Exec(fmt.Sprintf("DROP USER IF EXISTS %s;", testDBUser))
+	db.Exec(fmt.Sprintf("CREATE USER %s PASSWORD '%s';", testDBUser, testDBPass))
+	db.Close()
 	// Now need to grant privs on tables just created. Setting up defaults
 	// beforehand gets really messy so this is simpler. Note we need a new
 	// connection since the old one was not connected to our tfmodule_test db we
 	// just created so the grant is applied to the postgres db instead.
-	// db = TestDBConnectSuper(t)
-	db.Exec("GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO testuser;")
-	db.Exec("GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO testuser;")
+	db, err = gorm.Open("postgres", fmt.Sprintf("host=localhost port=5432 user=qwirk password=qwirk dbname=%s sslmode=disable", testDBName))
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+
+	db.Exec(fmt.Sprintf("GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO %s;", testDBUser))
+	db.Exec(fmt.Sprintf("GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO %s;", testDBUser))
 
 	// Start logging all statements, you can see the output of this in the PG
 	// instance logs. For typical docker dev setup you can see this by doing:
@@ -50,8 +53,13 @@ func TestDB(t *testing.T) *gorm.DB {
 	// Super useful as it includes all the true binding args not interpolated
 	// strings like gorm logging. Also shows transaction boundaries which is
 	// good for verification.
-	db.Exec("ALTER ROLE testuser SET log_statement = 'all'")
-	// db.Close()
+	db.Exec(fmt.Sprintf("ALTER ROLE %s SET log_statement = 'all'", testDBUser))
+	db.Close()
 
+	db, err = gorm.Open("postgres", fmt.Sprintf("host=localhost port=5432 user=%s password=%s dbname=%s sslmode=disable", testDBUser, testDBPass, testDBName))
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+	db.AutoMigrate(&Game{}, &Player{})
 	return db
 }

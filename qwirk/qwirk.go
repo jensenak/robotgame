@@ -9,29 +9,27 @@ import (
 	_ "github.com/jinzhu/gorm/dialects/postgres"
 )
 
+// GameServer is a wrapper around a GORM DB
 type GameServer struct {
 	db *gorm.DB
 }
 
+// Game is a joinable session with players
 type Game struct {
 	gorm.Model
 	Code    string `json:"code"`
 	State   State
-	Players []Player
+	Players []Player `gorm:"many2many:game_players;"`
 }
 
-type Player struct {
-	gorm.Model
-	GameID uint
-	Name   string
-}
-
+// NewGameServer returns a new instance of a GameServer
 func NewGameServer(db *gorm.DB) *GameServer {
 	return &GameServer{
 		db: db,
 	}
 }
 
+// Stop wraps db.close()
 func (gs *GameServer) Stop() {
 	gs.db.Close()
 }
@@ -48,6 +46,7 @@ func (gs *GameServer) NewGame() *Game {
 	return g
 }
 
+// Find takes a code and uses it to find an existing game
 func (gs *GameServer) Find(code string) (*Game, error) {
 	var g Game
 	q := gs.db.First(&g, "code = ?", code)
